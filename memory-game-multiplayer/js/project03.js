@@ -8,6 +8,12 @@ const gridColsInput = document.getElementById("gridCols");
 const welcomeContainer = document.querySelector(".welcome-container");
 const gameContainer = document.querySelector(".game-container");
 
+// New elements for multi-player support
+const player1ScoreElement = document.getElementById("player1Score");
+const player2ScoreElement = document.getElementById("player2Score");
+const currentPlayerLabel = document.getElementById("currentPlayerLabel");
+
+// Game variables
 let cards = [];
 let flippedCards = [];
 let moves = 0;
@@ -15,6 +21,10 @@ let timerInterval = null;
 let timeElapsed = 0;
 let gridRows = 4;
 let gridCols = 4;
+
+// New multi-player variables
+let currentPlayer = 1;          // "Player 1" starts
+let playerScores = [0, 0];      // [player1score, player2score]
 
 // List of animal image filenames
 const animalImages = [
@@ -53,8 +63,10 @@ function initializeGame() {
   const cardPairs = [...selectedImages, ...selectedImages];
   cards = shuffleArray(cardPairs);
   createGrid();
+
+  // Reset game info for new game
   resetGameInfo();
-  startTimer(); // ✅ Fix: Ensure the timer starts when the game begins
+  startTimer();
 }
 
 function shuffleArray(array) {
@@ -76,7 +88,9 @@ function createGrid() {
     card.innerHTML = `
       <div class="card-inner">
         <div class="card-front"></div>
-        <div class="card-back"><img src="images/${image}" alt="Animal"></div>
+        <div class="card-back">
+          <img src="images/${image}" alt="Animal">
+        </div>
       </div>
     `;
     card.addEventListener("click", handleCardClick);
@@ -108,29 +122,52 @@ function handleCardClick(e) {
 function checkForMatch() {
   const [card1, card2] = flippedCards;
 
-  // Compare image filenames instead of unique symbols
   if (card1.dataset.symbol === card2.dataset.symbol) {
+    // It's a match
     card1.classList.add("matched");
     card2.classList.add("matched");
+
+    // Increment the current player's score
+    playerScores[currentPlayer - 1]++;
+    updateScoreDisplay();
+
     flippedCards = [];
-    
+
     // Check if all cards are matched
     if (document.querySelectorAll(".card.matched").length === cards.length) {
       clearInterval(timerInterval);
-      alert(`Game completed in ${moves} moves and ${formatTime(timeElapsed)}!`);
+      alert(`Game completed in ${moves} moves and ${formatTime(timeElapsed)}!
+Player 1 scored ${playerScores[0]} 
+Player 2 scored ${playerScores[1]} 
+${determineWinner()}`);
     }
+    // Because the player found a match, they keep their turn (do NOT switch players)
   } else {
+    // Not a match, so flip them back after a short delay
     setTimeout(() => {
       card1.classList.remove("flipped");
       card2.classList.remove("flipped");
       flippedCards = [];
+
+      // Switch current player
+      currentPlayer = (currentPlayer === 1) ? 2 : 1;
+      updateCurrentPlayerDisplay();
     }, 1000);
   }
 }
 
+function updateScoreDisplay() {
+  player1ScoreElement.textContent = playerScores[0];
+  player2ScoreElement.textContent = playerScores[1];
+}
+
+function updateCurrentPlayerDisplay() {
+  currentPlayerLabel.textContent = `Player ${currentPlayer}`;
+}
+
 function startTimer() {
   timeElapsed = 0;
-  clearInterval(timerInterval); // ✅ Fix: Ensure previous timer is cleared
+  clearInterval(timerInterval);
   timerInterval = setInterval(() => {
     timeElapsed++;
     timer.textContent = formatTime(timeElapsed);
@@ -144,13 +181,29 @@ function formatTime(seconds) {
 function resetGameInfo() {
   moves = 0;
   moveCounter.textContent = moves;
-  clearInterval(timerInterval); // ✅ Fix: Clear timer on game reset
+  clearInterval(timerInterval);
   timer.textContent = "00:00";
+
+  // Reset multi-player info
+  currentPlayer = 1;
+  playerScores = [0, 0];
+  updateScoreDisplay();
+  updateCurrentPlayerDisplay();
 }
 
 restartBtn.addEventListener("click", () => {
   gameContainer.classList.add("hidden");
   welcomeContainer.classList.remove("hidden");
-  clearInterval(timerInterval); // ✅ Fix: Clear the timer on restart
+  clearInterval(timerInterval);
   resetGameInfo();
 });
+
+function determineWinner() {
+  const [score1, score2] = playerScores;
+  if (score1 > score2) {
+    return "Player 1 Wins!";
+  } else if (score2 > score1) {
+    return "Player 2 Wins!";
+  }
+  return "It's a Tie!";
+}
